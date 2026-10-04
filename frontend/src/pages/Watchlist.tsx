@@ -15,7 +15,7 @@ function fmt(n: number) {
 }
 
 export function Watchlist({ showToast }: WatchlistProps) {
-  const prices = useWebSocket()
+  const { prices, flash } = useWebSocket()
   const qc = useQueryClient()
 
   const { data: watchlist = [], isLoading } = useQuery({
@@ -97,7 +97,7 @@ export function Watchlist({ showToast }: WatchlistProps) {
                 const change = coin.price_change_percentage_24h
                 const isUp = change >= 0
                 return (
-                  <tr key={item.id} className="border-b border-white/5 glass-hover group transition-all">
+                  <tr key={item.id} className={`border-b border-white/5 group transition-all ${isUp ? 'row-glow-up' : 'row-glow-down'}`}>
                     <td className="px-4 py-4">
                       <Link to={`/coin/${coin.id}`} className="flex items-center gap-3">
                         <img src={coin.image} alt={coin.name} className="w-8 h-8 rounded-full ring-1 ring-white/10" />
@@ -107,7 +107,10 @@ export function Watchlist({ showToast }: WatchlistProps) {
                         </div>
                       </Link>
                     </td>
-                    <td className="px-4 py-4 text-right font-mono font-semibold">
+                    <td className={`px-4 py-4 text-right font-mono font-semibold transition-all ${
+                      flash[coin.symbol.toUpperCase() + 'USDT'] === 'up' ? 'flash-up' :
+                      flash[coin.symbol.toUpperCase() + 'USDT'] === 'down' ? 'flash-down' : ''
+                    }`}>
                       ${price.toLocaleString(undefined, { maximumFractionDigits: price < 1 ? 6 : 2 })}
                     </td>
                     <td className="px-4 py-4 text-right">

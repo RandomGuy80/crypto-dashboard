@@ -28,7 +28,7 @@ export function CoinDetail() {
   const [buyPrice, setBuyPrice] = useState('')
   const [alertPrice, setAlertPrice] = useState('')
   const [alertDir, setAlertDir] = useState<'above' | 'below'>('above')
-  const prices = useWebSocket()
+  const { prices, flash } = useWebSocket()
   const qc = useQueryClient()
 
   const { data: candles = [] } = useQuery({
@@ -125,7 +125,10 @@ export function CoinDetail() {
               </div>
               {currentPrice && (
                 <div className="flex items-baseline gap-3 mt-1">
-                  <span className="text-3xl font-mono font-bold">
+                  <span className={`text-3xl font-mono font-bold px-2 py-0.5 rounded-lg transition-all ${
+                    coin && flash[coin.symbol.toUpperCase() + 'USDT'] === 'up' ? 'flash-up' :
+                    coin && flash[coin.symbol.toUpperCase() + 'USDT'] === 'down' ? 'flash-down' : ''
+                  }`}>
                     ${currentPrice.toLocaleString(undefined, { maximumFractionDigits: currentPrice < 1 ? 6 : 2 })}
                   </span>
                   <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-medium ${

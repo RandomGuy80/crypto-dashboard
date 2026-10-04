@@ -26,12 +26,12 @@ function Skeleton() {
 
 function fmt(n: number) {
   if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`
-  if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`
+  if (n >= 1e9)  return `$${(n / 1e9).toFixed(2)}B`
   return `$${(n / 1e6).toFixed(2)}M`
 }
 
 export function Dashboard() {
-  const prices = useWebSocket()
+  const { prices, flash } = useWebSocket()
   const qc = useQueryClient()
 
   const { data: coins = [], isLoading } = useQuery<Coin[]>({
@@ -64,37 +64,35 @@ export function Dashboard() {
           <p className="text-gray-500 text-sm mt-1">Live prices updated in real-time</p>
         </div>
         <div className="flex items-center gap-2 glass rounded-full px-4 py-2 text-xs text-green-400">
-          <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+          <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
           Live
         </div>
       </div>
 
       {gm && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="glass rounded-2xl p-4 flex items-center gap-4">
+          <div className="glass-card-hover rounded-2xl p-4 flex items-center gap-4">
             <CircularProgress value={gm.btc_dominance} max={100} size={60} strokeWidth={5} color="#f97316" label={`${gm.btc_dominance.toFixed(1)}%`} sublabel="BTC" />
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wider">BTC Dominance</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wider">BTC Dom</p>
               <p className="text-lg font-bold text-orange-400 font-mono mt-0.5">{gm.btc_dominance.toFixed(1)}%</p>
             </div>
           </div>
-          <div className="glass rounded-2xl p-4 flex items-center gap-4">
+          <div className="glass-card-hover rounded-2xl p-4 flex items-center gap-4">
             <CircularProgress value={gm.eth_dominance} max={100} size={60} strokeWidth={5} color="#3b82f6" label={`${gm.eth_dominance.toFixed(1)}%`} sublabel="ETH" />
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wider">ETH Dominance</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wider">ETH Dom</p>
               <p className="text-lg font-bold text-blue-400 font-mono mt-0.5">{gm.eth_dominance.toFixed(1)}%</p>
             </div>
           </div>
-          <div className="glass rounded-2xl p-4">
+          <div className="glass-card-hover rounded-2xl p-4">
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Market Cap</p>
-            <p className="text-xl font-bold font-mono">
-              {fmt(gm.total_market_cap_usd)}
-            </p>
+            <p className="text-xl font-bold font-mono">{fmt(gm.total_market_cap_usd)}</p>
             <p className={`text-xs mt-1 font-medium ${gm.market_cap_change_24h >= 0 ? 'price-up' : 'price-down'}`}>
               {gm.market_cap_change_24h >= 0 ? '▲' : '▼'} {Math.abs(gm.market_cap_change_24h).toFixed(2)}% 24h
             </p>
           </div>
-          <div className="glass rounded-2xl p-4">
+          <div className="glass-card-hover rounded-2xl p-4">
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">24h Volume</p>
             <p className="text-xl font-bold font-mono">{fmt(gm.total_volume_usd)}</p>
             <p className="text-xs mt-1 text-gray-500">{gm.active_cryptocurrencies.toLocaleString()} active coins</p>
@@ -113,7 +111,7 @@ export function Dashboard() {
               <th className="text-right px-4 py-4 hidden md:table-cell">Market Cap</th>
               <th className="text-right px-4 py-4 hidden lg:table-cell">Volume</th>
               <th className="text-right px-4 py-4 hidden xl:table-cell">7D Chart</th>
-              <th className="px-4 py-4 w-10"></th>
+              <th className="px-4 py-4 w-10" />
             </tr>
           </thead>
           <tbody>
@@ -123,23 +121,24 @@ export function Dashboard() {
                 const price = getPrice(coin)
                 const change = coin.price_change_percentage_24h
                 const isUp = change >= 0
+                const wsKey = coin.symbol.toUpperCase() + 'USDT'
+                const flashDir = flash[wsKey]
                 return (
-                  <tr key={coin.id} className="border-b border-white/5 glass-hover group transition-all">
-                    <td className="px-4 py-4">
-                      <span className="text-gray-600 text-xs font-mono w-5 inline-block">{i + 1}</span>
-                    </td>
+                  <tr key={coin.id}
+                    className={`border-b border-white/5 group transition-all ${isUp ? 'row-glow-up' : 'row-glow-down'}`}>
+                    <td className="px-4 py-4 text-gray-600 text-xs font-mono">{i + 1}</td>
                     <td className="px-4 py-4">
                       <Link to={`/coin/${coin.id}`} className="flex items-center gap-3">
-                        <div className="relative">
-                          <img src={coin.image} alt={coin.name} className="w-8 h-8 rounded-full ring-1 ring-white/10" />
-                        </div>
+                        <img src={coin.image} alt={coin.name} className="w-8 h-8 rounded-full ring-1 ring-white/10" />
                         <div>
                           <p className="font-semibold group-hover:text-purple-300 transition-colors">{coin.name}</p>
                           <p className="text-gray-500 text-xs uppercase">{coin.symbol}</p>
                         </div>
                       </Link>
                     </td>
-                    <td className="px-4 py-4 text-right font-mono font-semibold">
+                    <td className={`px-4 py-4 text-right font-mono font-semibold rounded transition-all ${
+                      flashDir === 'up' ? 'flash-up' : flashDir === 'down' ? 'flash-down' : ''
+                    }`}>
                       ${price.toLocaleString(undefined, { maximumFractionDigits: price < 1 ? 6 : 2 })}
                     </td>
                     <td className="px-4 py-4 text-right">

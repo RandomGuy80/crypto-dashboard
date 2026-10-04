@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { CoinPicker } from '../components/CoinPicker'
 
 interface AlertsProps {
   showToast?: (msg: string, type?: 'success' | 'error' | 'warning' | 'info') => void
@@ -74,8 +75,7 @@ export function Alerts({ showToast }: AlertsProps) {
         <div className="flex gap-3 items-end flex-wrap">
           <div>
             <label className="text-xs text-gray-500 block mb-2">Symbol</label>
-            <input value={coinId} onChange={e => setCoinId(e.target.value)} placeholder="BTCUSDT"
-              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm w-32 focus:outline-none focus:border-purple-500/50 uppercase placeholder-gray-600 transition-all" />
+            <CoinPicker value={coinId} onChange={setCoinId} />
           </div>
           <div>
             <label className="text-xs text-gray-500 block mb-2">Direction</label>
