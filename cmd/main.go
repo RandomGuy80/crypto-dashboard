@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	fws "github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
@@ -43,9 +44,14 @@ func main() {
 
 	app.Use(recover.New())
 	app.Use(logger.New())
+	allowOrigins := os.Getenv("ALLOWED_ORIGINS")
+	if allowOrigins == "" {
+		allowOrigins = "*"
+	}
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*",
+		AllowOrigins: allowOrigins,
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
+		AllowMethods: "GET,POST,PUT,DELETE,OPTIONS",
 	}))
 
 	app.Get("/health", func(c *fiber.Ctx) error {

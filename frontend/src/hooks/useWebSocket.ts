@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { getWsUrl } from '../lib/api'
 
 export interface PriceUpdate {
   symbol: string
@@ -31,8 +32,7 @@ export function useWebSocket() {
 
   useEffect(() => {
     const connect = () => {
-      const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
-      ws.current = new WebSocket(`${protocol}://${window.location.host}/api/ws`)
+      ws.current = new WebSocket(getWsUrl())
       ws.current.onmessage = handleMessage
       ws.current.onclose = () => setTimeout(connect, 3000)
     }
