@@ -39,7 +39,7 @@ func NewAuthService(pool *pgxpool.Pool, jwtSecret, accessTTL, refreshTTL string)
 }
 
 func (s *AuthService) Register(ctx context.Context, email, password string) (*model.AuthResponse, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), 8)
 	if err != nil {
 		return nil, err
 	}

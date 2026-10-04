@@ -9,6 +9,18 @@ interface Coin {
   market_cap: number; total_volume: number; image: string
 }
 
+function Skeleton() {
+  return (
+    <tr>
+      {Array.from({ length: 7 }).map((_, i) => (
+        <td key={i} className="px-4 py-4">
+          <div className="h-4 rounded shimmer" style={{ width: `${60 + Math.random() * 40}%` }} />
+        </td>
+      ))}
+    </tr>
+  )
+}
+
 export function Dashboard() {
   const prices = useWebSocket()
   const qc = useQueryClient()
@@ -24,65 +36,78 @@ export function Dashboard() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['watchlist'] }),
   })
 
-  const fmt = (n: number) => n >= 1e9
-    ? `$${(n / 1e9).toFixed(2)}B`
-    : n >= 1e6 ? `$${(n / 1e6).toFixed(2)}M` : `$${n.toLocaleString()}`
+  const fmt = (n: number) => n >= 1e9 ? `$${(n / 1e9).toFixed(2)}B` : `$${(n / 1e6).toFixed(2)}M`
 
   const getPrice = (coin: Coin) => {
-    const wsPrice = prices[coin.symbol.toUpperCase() + 'USDT']
-    return wsPrice ? parseFloat(wsPrice) : coin.current_price
+    const ws = prices[coin.symbol.toUpperCase() + 'USDT']
+    return ws ? parseFloat(ws) : coin.current_price
   }
 
-  if (isLoading) return <div className="text-gray-400 text-center py-20">Loading...</div>
-
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Market</h1>
-      <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Market Overview</h1>
+          <p className="text-gray-500 text-sm mt-1">Live prices updated in real-time</p>
+        </div>
+        <div className="flex items-center gap-2 glass rounded-full px-4 py-2 text-xs text-green-400">
+          <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+          Live
+        </div>
+      </div>
+
+      <div className="glass rounded-2xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-800 text-gray-400">
-              <th className="text-left px-4 py-3">#</th>
-              <th className="text-left px-4 py-3">Name</th>
-              <th className="text-right px-4 py-3">Price</th>
-              <th className="text-right px-4 py-3">24h %</th>
-              <th className="text-right px-4 py-3">Market Cap</th>
-              <th className="text-right px-4 py-3">Volume</th>
-              <th className="px-4 py-3"></th>
+            <tr className="border-b border-white/5 text-gray-500 text-xs uppercase tracking-wider">
+              <th className="text-left px-4 py-4 w-8">#</th>
+              <th className="text-left px-4 py-4">Asset</th>
+              <th className="text-right px-4 py-4">Price</th>
+              <th className="text-right px-4 py-4">24h Change</th>
+              <th className="text-right px-4 py-4 hidden md:table-cell">Market Cap</th>
+              <th className="text-right px-4 py-4 hidden lg:table-cell">Volume</th>
+              <th className="px-4 py-4 w-10"></th>
             </tr>
           </thead>
           <tbody>
-            {coins.map((coin, i) => {
-              const price = getPrice(coin)
-              const change = coin.price_change_percentage_24h
-              return (
-                <tr key={coin.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
-                  <td className="px-4 py-3 text-gray-500">{i + 1}</td>
-                  <td className="px-4 py-3">
-                    <Link to={`/coin/${coin.id}`} className="flex items-center gap-3 hover:text-purple-400">
-                      <img src={coin.image} alt={coin.name} className="w-6 h-6 rounded-full" />
-                      <span className="font-medium">{coin.name}</span>
-                      <span className="text-gray-500 uppercase">{coin.symbol}</span>
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono">
-                    ${price.toLocaleString(undefined, { maximumFractionDigits: price < 1 ? 6 : 2 })}
-                  </td>
-                  <td className={`px-4 py-3 text-right font-mono ${change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {change >= 0 ? '+' : ''}{change.toFixed(2)}%
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-400">{fmt(coin.market_cap)}</td>
-                  <td className="px-4 py-3 text-right text-gray-400">{fmt(coin.total_volume)}</td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => addToWatchlist.mutate(coin.id)}
-                      className="text-gray-500 hover:text-purple-400 transition-colors text-lg"
-                      title="Add to watchlist"
-                    >★</button>
-                  </td>
-                </tr>
-              )
-            })}
+            {isLoading
+              ? Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} />)
+              : coins.map((coin, i) => {
+                const price = getPrice(coin)
+                const change = coin.price_change_percentage_24h
+                const isUp = change >= 0
+                return (
+                  <tr key={coin.id} className="border-b border-white/5 glass-hover group transition-all">
+                    <td className="px-4 py-4 text-gray-600 text-xs">{i + 1}</td>
+                    <td className="px-4 py-4">
+                      <Link to={`/coin/${coin.id}`} className="flex items-center gap-3">
+                        <img src={coin.image} alt={coin.name} className="w-8 h-8 rounded-full ring-1 ring-white/10" />
+                        <div>
+                          <p className="font-semibold group-hover:text-purple-300 transition-colors">{coin.name}</p>
+                          <p className="text-gray-500 text-xs uppercase">{coin.symbol}</p>
+                        </div>
+                      </Link>
+                    </td>
+                    <td className="px-4 py-4 text-right font-mono font-semibold">
+                      ${price.toLocaleString(undefined, { maximumFractionDigits: price < 1 ? 6 : 2 })}
+                    </td>
+                    <td className="px-4 py-4 text-right">
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${
+                        isUp ? 'bg-green-500/10 price-up' : 'bg-red-500/10 price-down'
+                      }`}>
+                        {isUp ? '▲' : '▼'} {Math.abs(change).toFixed(2)}%
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-right text-gray-400 hidden md:table-cell">{fmt(coin.market_cap)}</td>
+                    <td className="px-4 py-4 text-right text-gray-400 hidden lg:table-cell">{fmt(coin.total_volume)}</td>
+                    <td className="px-4 py-4 text-right">
+                      <button onClick={() => addToWatchlist.mutate(coin.id)}
+                        className="text-gray-600 hover:text-yellow-400 transition-colors text-lg opacity-0 group-hover:opacity-100"
+                        title="Add to watchlist">★</button>
+                    </td>
+                  </tr>
+                )
+              })}
           </tbody>
         </table>
       </div>
