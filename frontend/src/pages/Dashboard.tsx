@@ -2,11 +2,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useWebSocket } from '../hooks/useWebSocket'
+import { Sparkline } from '../components/Sparkline'
 
 interface Coin {
   id: string; symbol: string; name: string
   current_price: number; price_change_percentage_24h: number
   market_cap: number; total_volume: number; image: string
+  sparkline_in_7d?: { price: number[] }
 }
 
 function Skeleton() {
@@ -66,6 +68,7 @@ export function Dashboard() {
               <th className="text-right px-4 py-4">24h Change</th>
               <th className="text-right px-4 py-4 hidden md:table-cell">Market Cap</th>
               <th className="text-right px-4 py-4 hidden lg:table-cell">Volume</th>
+              <th className="text-right px-4 py-4 hidden xl:table-cell">7D Chart</th>
               <th className="px-4 py-4 w-10"></th>
             </tr>
           </thead>
@@ -100,6 +103,11 @@ export function Dashboard() {
                     </td>
                     <td className="px-4 py-4 text-right text-gray-400 hidden md:table-cell">{fmt(coin.market_cap)}</td>
                     <td className="px-4 py-4 text-right text-gray-400 hidden lg:table-cell">{fmt(coin.total_volume)}</td>
+                    <td className="px-4 py-4 text-right hidden xl:table-cell">
+                      <div className="flex justify-end">
+                        <Sparkline data={coin.sparkline_in_7d?.price ?? []} positive={isUp} />
+                      </div>
+                    </td>
                     <td className="px-4 py-4 text-right">
                       <button onClick={() => addToWatchlist.mutate(coin.id)}
                         className="text-gray-600 hover:text-yellow-400 transition-colors text-lg opacity-0 group-hover:opacity-100"

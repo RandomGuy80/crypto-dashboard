@@ -1,14 +1,19 @@
 package model
 
+type SparklineData struct {
+	Price []float64 `json:"price"`
+}
+
 type Coin struct {
-	ID            string  `json:"id"`
-	Symbol        string  `json:"symbol"`
-	Name          string  `json:"name"`
-	CurrentPrice  float64 `json:"current_price"`
-	PriceChange24 float64 `json:"price_change_percentage_24h"`
-	MarketCap     float64 `json:"market_cap"`
-	Volume24h     float64 `json:"total_volume"`
-	Image         string  `json:"image"`
+	ID            string         `json:"id"`
+	Symbol        string         `json:"symbol"`
+	Name          string         `json:"name"`
+	CurrentPrice  float64        `json:"current_price"`
+	PriceChange24 float64        `json:"price_change_percentage_24h"`
+	MarketCap     float64        `json:"market_cap"`
+	Volume24h     float64        `json:"total_volume"`
+	Image         string         `json:"image"`
+	Sparkline     *SparklineData `json:"sparkline_in_7d,omitempty"`
 }
 
 type CandlePoint struct {

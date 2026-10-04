@@ -37,7 +37,7 @@ func (s *CoinGeckoService) GetTopCoins(ctx context.Context, limit int) ([]model.
 		}
 	}
 
-	url := fmt.Sprintf("%s/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=%d&page=1&sparkline=false", s.baseURL, limit)
+	url := fmt.Sprintf("%s/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=%d&page=1&sparkline=true", s.baseURL, limit)
 	resp, err := s.http.Get(url)
 	if err != nil {
 		return nil, err
