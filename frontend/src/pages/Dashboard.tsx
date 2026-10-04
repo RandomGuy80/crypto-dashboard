@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
@@ -33,12 +34,20 @@ function fmt(n: number) {
 export function Dashboard() {
   const { prices, flash } = useWebSocket()
   const qc = useQueryClient()
+  const [search, setSearch] = useState('')
 
-  const { data: coins = [], isLoading } = useQuery<Coin[]>({
+  const { data: allCoins = [], isLoading } = useQuery<Coin[]>({
     queryKey: ['coins'],
-    queryFn: () => api.get('/coins/?limit=20').then(r => r.data),
+    queryFn: () => api.get('/coins/?limit=100').then(r => r.data),
     refetchInterval: 30000,
   })
+
+  const coins = search.trim()
+    ? allCoins.filter(c =>
+        c.name.toLowerCase().includes(search.toLowerCase()) ||
+        c.symbol.toLowerCase().includes(search.toLowerCase())
+      )
+    : allCoins.slice(0, 20)
 
   const { data: gm } = useQuery({
     queryKey: ['market-global'],
@@ -63,9 +72,21 @@ export function Dashboard() {
           <h1 className="text-2xl font-bold gradient-text-anim">Market Overview</h1>
           <p className="text-gray-500 text-sm mt-1">Live prices updated in real-time</p>
         </div>
-        <div className="flex items-center gap-2 glass rounded-full px-4 py-2 text-xs text-green-400">
-          <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-          Live
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs">⌕</span>
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search coins..."
+              className="bg-white/5 border border-white/10 rounded-xl pl-7 pr-4 py-2 text-sm w-44
+                focus:outline-none focus:border-purple-500/50 placeholder-gray-600 transition-all"
+            />
+          </div>
+          <div className="flex items-center gap-2 glass rounded-full px-4 py-2 text-xs text-green-400">
+            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+            Live
+          </div>
         </div>
       </div>
 

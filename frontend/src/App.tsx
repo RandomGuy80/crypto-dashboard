@@ -4,6 +4,8 @@ import { Layout } from './components/Layout'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { ToastContainer } from './components/Toast'
 import { useToast } from './hooks/useToast'
+import { useAuthStore } from './store/auth'
+import { Landing } from './pages/Landing'
 import { Login } from './pages/Login'
 import { Register } from './pages/Register'
 import { Dashboard } from './pages/Dashboard'
@@ -14,6 +16,12 @@ import { Alerts } from './pages/Alerts'
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30000 } } })
 
+function RootRoute({ show }: { show: (msg: string, type?: any) => void }) {
+  const { accessToken } = useAuthStore()
+  if (accessToken) return <Layout><Dashboard /></Layout>
+  return <Landing />
+}
+
 function AppInner() {
   const { toasts, show, dismiss } = useToast()
 
@@ -21,9 +29,9 @@ function AppInner() {
     <>
       <BrowserRouter>
         <Routes>
+          <Route path="/" element={<RootRoute show={show} />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
           <Route path="/coin/:id" element={<ProtectedRoute><Layout><CoinDetail /></Layout></ProtectedRoute>} />
           <Route path="/watchlist" element={<ProtectedRoute><Layout><Watchlist showToast={show} /></Layout></ProtectedRoute>} />
           <Route path="/portfolio" element={<ProtectedRoute><Layout><Portfolio /></Layout></ProtectedRoute>} />

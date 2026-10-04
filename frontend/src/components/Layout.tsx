@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../store/auth'
 import { api } from '../lib/api'
 import { PriceTicker } from './PriceTicker'
+import { Footer } from './Footer'
 
 const navLinks = [
   { to: '/', label: 'Market', icon: '◈' },
@@ -98,6 +99,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
       <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-8 fade-in">{children}</main>
+      <Footer />
     </div>
   )
 }

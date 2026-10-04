@@ -193,7 +193,7 @@
     0%   { transform: translateX(0); }
     100% { transform: translateX(-50%); }
   }
-  .ticker-track { animation: ticker-scroll 40s linear infinite; }
+  .ticker-track { animation: ticker-scroll 90s linear infinite; }
   .ticker-track:hover { animation-play-state: paused; }
 
   .stat-bar      { height:4px; border-radius:9999px; background:rgba(255,255,255,0.06); overflow:hidden; }
