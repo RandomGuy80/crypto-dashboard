@@ -29,7 +29,7 @@ func main() {
 	defer rdb.Close()
 
 	alertsSvc := service.NewAlertsService(pool)
-	coinSvc := service.NewCoinGeckoService(cfg.CoinGeckoURL, rdb)
+	coinSvc := service.NewCoinGeckoService(cfg.CoinGeckoURL, cfg.CoinGeckoAPIKey, rdb)
 	authSvc := service.NewAuthService(pool, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.JWTRefreshTTL)
 
 	hub := ws.NewHub()

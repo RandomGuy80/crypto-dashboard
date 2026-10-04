@@ -15,16 +15,38 @@ import (
 
 type CoinGeckoService struct {
 	baseURL string
+	apiKey  string
 	rdb     *redis.Client
 	http    *http.Client
 }
 
-func NewCoinGeckoService(baseURL string, rdb *redis.Client) *CoinGeckoService {
+func NewCoinGeckoService(baseURL, apiKey string, rdb *redis.Client) *CoinGeckoService {
 	return &CoinGeckoService{
 		baseURL: baseURL,
+		apiKey:  apiKey,
 		rdb:     rdb,
-		http:    &http.Client{Timeout: 10 * time.Second},
+		http:    &http.Client{Timeout: 15 * time.Second},
 	}
+}
+
+func (s *CoinGeckoService) do(url string) (*http.Response, error) {
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	if s.apiKey != "" {
+		req.Header.Set("x-cg-demo-api-key", s.apiKey)
+	}
+	resp, err := s.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		return nil, fmt.Errorf("coingecko %s: %s", resp.Status, string(body))
+	}
+	return resp, nil
 }
 
 func (s *CoinGeckoService) GetTopCoins(ctx context.Context, limit int) ([]model.Coin, error) {
@@ -38,7 +60,7 @@ func (s *CoinGeckoService) GetTopCoins(ctx context.Context, limit int) ([]model.
 	}
 
 	url := fmt.Sprintf("%s/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=%d&page=1&sparkline=true", s.baseURL, limit)
-	resp, err := s.http.Get(url)
+	resp, err := s.do(url)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +92,7 @@ func (s *CoinGeckoService) GetGlobalMarket(ctx context.Context) (*model.GlobalMa
 		}
 	}
 
-	resp, err := s.http.Get(s.baseURL + "/global")
+	resp, err := s.do(s.baseURL + "/global")
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +142,7 @@ func (s *CoinGeckoService) GetCoinHistory(ctx context.Context, coinID string, da
 	}
 
 	url := fmt.Sprintf("%s/coins/%s/ohlc?vs_currency=usd&days=%d", s.baseURL, coinID, days)
-	resp, err := s.http.Get(url)
+	resp, err := s.do(url)
 	if err != nil {
 		return nil, err
 	}
