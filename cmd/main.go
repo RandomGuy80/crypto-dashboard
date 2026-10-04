@@ -27,14 +27,16 @@ func main() {
 	rdb := redisclient.Connect(cfg.RedisURL)
 	defer rdb.Close()
 
-	hub := ws.NewHub()
-	go ws.RunBinanceStream(hub, cfg.BinanceWS)
-
-	authSvc := service.NewAuthService(pool, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.JWTRefreshTTL)
+	alertsSvc := service.NewAlertsService(pool)
 	coinSvc := service.NewCoinGeckoService(cfg.CoinGeckoURL, rdb)
+	authSvc := service.NewAuthService(pool, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.JWTRefreshTTL)
+
+	hub := ws.NewHub()
+	go ws.RunBinanceStream(hub, cfg.BinanceWS, alertsSvc)
 
 	authHandler := handler.NewAuthHandler(authSvc)
 	coinsHandler := handler.NewCoinsHandler(coinSvc, hub)
+	userHandler := handler.NewUserHandler(pool, coinSvc, alertsSvc)
 	authMiddleware := middleware.Auth(authSvc)
 
 	app := fiber.New(fiber.Config{AppName: "Crypto Dashboard API"})
@@ -61,6 +63,22 @@ func main() {
 	coins := api.Group("/coins")
 	coins.Get("/", coinsHandler.GetTopCoins)
 	coins.Get("/:id/history", coinsHandler.GetCoinHistory)
+
+	watchlist := api.Group("/watchlist", authMiddleware)
+	watchlist.Get("/", userHandler.GetWatchlist)
+	watchlist.Post("/:coin_id", userHandler.AddToWatchlist)
+	watchlist.Delete("/:coin_id", userHandler.RemoveFromWatchlist)
+
+	portfolio := api.Group("/portfolio", authMiddleware)
+	portfolio.Get("/", userHandler.GetPortfolio)
+	portfolio.Post("/", userHandler.AddHolding)
+	portfolio.Put("/:id", userHandler.UpdateHolding)
+	portfolio.Delete("/:id", userHandler.DeleteHolding)
+
+	alerts := api.Group("/alerts", authMiddleware)
+	alerts.Get("/", userHandler.GetAlerts)
+	alerts.Post("/", userHandler.CreateAlert)
+	alerts.Delete("/:id", userHandler.DeleteAlert)
 
 	app.Use("/api/ws", func(c *fiber.Ctx) error {
 		if fws.IsWebSocketUpgrade(c) {

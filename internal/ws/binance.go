@@ -1,8 +1,10 @@
 package ws
 
 import (
+	"context"
 	"encoding/json"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -13,29 +15,32 @@ type binanceTicker struct {
 	Price  string `json:"c"`
 }
 
-// symbols to stream — top coins vs USDT
+type AlertChecker interface {
+	CheckAlerts(ctx context.Context, symbol string, price string)
+}
+
 var defaultSymbols = []string{
 	"btcusdt", "ethusdt", "bnbusdt", "solusdt", "xrpusdt",
 	"adausdt", "dogeusdt", "avaxusdt", "dotusdt", "maticusdt",
 }
 
-func RunBinanceStream(hub *Hub, wsURL string) {
+func RunBinanceStream(hub *Hub, wsURL string, alertChecker AlertChecker) {
 	for {
-		if err := connectBinance(hub, wsURL); err != nil {
+		if err := connectBinance(hub, wsURL, alertChecker); err != nil {
 			log.Printf("binance stream error: %v — reconnecting in 5s", err)
 		}
 		time.Sleep(5 * time.Second)
 	}
 }
 
-func connectBinance(hub *Hub, wsURL string) error {
-	streams := ""
-	for i, s := range defaultSymbols {
-		if i > 0 {
-			streams += "/"
+func connectBinance(hub *Hub, wsURL string, alertChecker AlertChecker) error {
+	streams := strings.Join(func() []string {
+		s := make([]string, len(defaultSymbols))
+		for i, sym := range defaultSymbols {
+			s[i] = sym + "@ticker"
 		}
-		streams += s + "@ticker"
-	}
+		return s
+	}(), "/")
 	url := wsURL + "/stream?streams=" + streams
 
 	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
@@ -63,5 +68,9 @@ func connectBinance(hub *Hub, wsURL string) error {
 			"price":  msg.Data.Price,
 		})
 		hub.Broadcast(out)
+
+		if alertChecker != nil {
+			go alertChecker.CheckAlerts(context.Background(), msg.Data.Symbol, msg.Data.Price)
+		}
 	}
 }
