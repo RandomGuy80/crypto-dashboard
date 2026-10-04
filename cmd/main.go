@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 
+	fws "github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -14,6 +15,7 @@ import (
 	"awesomeProject11/internal/middleware"
 	redisclient "awesomeProject11/internal/redis"
 	"awesomeProject11/internal/service"
+	"awesomeProject11/internal/ws"
 )
 
 func main() {
@@ -25,13 +27,17 @@ func main() {
 	rdb := redisclient.Connect(cfg.RedisURL)
 	defer rdb.Close()
 
+	hub := ws.NewHub()
+	go ws.RunBinanceStream(hub, cfg.BinanceWS)
+
 	authSvc := service.NewAuthService(pool, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.JWTRefreshTTL)
+	coinSvc := service.NewCoinGeckoService(cfg.CoinGeckoURL, rdb)
+
 	authHandler := handler.NewAuthHandler(authSvc)
+	coinsHandler := handler.NewCoinsHandler(coinSvc, hub)
 	authMiddleware := middleware.Auth(authSvc)
 
-	app := fiber.New(fiber.Config{
-		AppName: "Crypto Dashboard API",
-	})
+	app := fiber.New(fiber.Config{AppName: "Crypto Dashboard API"})
 
 	app.Use(recover.New())
 	app.Use(logger.New())
@@ -51,6 +57,18 @@ func main() {
 	auth.Post("/login", authHandler.Login)
 	auth.Post("/refresh", authHandler.Refresh)
 	auth.Post("/logout", authMiddleware, authHandler.Logout)
+
+	coins := api.Group("/coins")
+	coins.Get("/", coinsHandler.GetTopCoins)
+	coins.Get("/:id/history", coinsHandler.GetCoinHistory)
+
+	app.Use("/api/ws", func(c *fiber.Ctx) error {
+		if fws.IsWebSocketUpgrade(c) {
+			return c.Next()
+		}
+		return fiber.ErrUpgradeRequired
+	})
+	app.Get("/api/ws", coinsHandler.WebSocket())
 
 	log.Printf("server starting on port %s", cfg.Port)
 	if err := app.Listen(":" + cfg.Port); err != nil {
