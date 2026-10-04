@@ -52,7 +52,7 @@ export function Watchlist({ showToast }: WatchlistProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Watchlist</h1>
+          <h1 className="text-2xl font-bold gradient-text-anim">Watchlist</h1>
           <p className="text-gray-500 text-sm mt-1">
             {watchlist.length > 0
               ? <><span className="text-purple-400 font-medium">{watchlist.length}</span> coins tracked · combined cap {fmt(totalWatchedCap)}</>

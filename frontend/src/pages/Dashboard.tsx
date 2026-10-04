@@ -60,7 +60,7 @@ export function Dashboard() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Market Overview</h1>
+          <h1 className="text-2xl font-bold gradient-text-anim">Market Overview</h1>
           <p className="text-gray-500 text-sm mt-1">Live prices updated in real-time</p>
         </div>
         <div className="flex items-center gap-2 glass rounded-full px-4 py-2 text-xs text-green-400">
@@ -71,31 +71,31 @@ export function Dashboard() {
 
       {gm && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="glass-card-hover rounded-2xl p-4 flex items-center gap-4">
-            <CircularProgress value={gm.btc_dominance} max={100} size={60} strokeWidth={5} color="#f97316" label={`${gm.btc_dominance.toFixed(1)}%`} sublabel="BTC" />
+          <div className="glass-card-hover holo-card rounded-2xl p-4 flex items-center gap-4">
+            <CircularProgress value={gm.btc_dominance} max={100} size={62} strokeWidth={5} color="#f97316" label={`${gm.btc_dominance.toFixed(1)}%`} sublabel="BTC" />
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wider">BTC Dom</p>
-              <p className="text-lg font-bold text-orange-400 font-mono mt-0.5">{gm.btc_dominance.toFixed(1)}%</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wider">BTC Dominance</p>
+              <p className="text-xl font-bold text-orange-400 font-mono mt-0.5">{gm.btc_dominance.toFixed(1)}%</p>
             </div>
           </div>
-          <div className="glass-card-hover rounded-2xl p-4 flex items-center gap-4">
-            <CircularProgress value={gm.eth_dominance} max={100} size={60} strokeWidth={5} color="#3b82f6" label={`${gm.eth_dominance.toFixed(1)}%`} sublabel="ETH" />
+          <div className="glass-card-hover holo-card rounded-2xl p-4 flex items-center gap-4">
+            <CircularProgress value={gm.eth_dominance} max={100} size={62} strokeWidth={5} color="#3b82f6" label={`${gm.eth_dominance.toFixed(1)}%`} sublabel="ETH" />
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wider">ETH Dom</p>
-              <p className="text-lg font-bold text-blue-400 font-mono mt-0.5">{gm.eth_dominance.toFixed(1)}%</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wider">ETH Dominance</p>
+              <p className="text-xl font-bold text-blue-400 font-mono mt-0.5">{gm.eth_dominance.toFixed(1)}%</p>
             </div>
           </div>
-          <div className="glass-card-hover rounded-2xl p-4">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Market Cap</p>
-            <p className="text-xl font-bold font-mono">{fmt(gm.total_market_cap_usd)}</p>
-            <p className={`text-xs mt-1 font-medium ${gm.market_cap_change_24h >= 0 ? 'price-up' : 'price-down'}`}>
-              {gm.market_cap_change_24h >= 0 ? '▲' : '▼'} {Math.abs(gm.market_cap_change_24h).toFixed(2)}% 24h
+          <div className="glass-card-hover holo-card rounded-2xl p-5">
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Global Market Cap</p>
+            <p className="text-2xl font-bold font-mono">{fmt(gm.total_market_cap_usd)}</p>
+            <p className={`text-xs mt-1.5 font-semibold ${gm.market_cap_change_24h >= 0 ? 'price-up' : 'price-down'}`}>
+              {gm.market_cap_change_24h >= 0 ? '▲' : '▼'} {Math.abs(gm.market_cap_change_24h).toFixed(2)}% past 24h
             </p>
           </div>
-          <div className="glass-card-hover rounded-2xl p-4">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">24h Volume</p>
-            <p className="text-xl font-bold font-mono">{fmt(gm.total_volume_usd)}</p>
-            <p className="text-xs mt-1 text-gray-500">{gm.active_cryptocurrencies.toLocaleString()} active coins</p>
+          <div className="glass-card-hover holo-card rounded-2xl p-5">
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">24h Volume</p>
+            <p className="text-2xl font-bold font-mono">{fmt(gm.total_volume_usd)}</p>
+            <p className="text-xs mt-1.5 text-gray-500">{gm.active_cryptocurrencies.toLocaleString()} active assets</p>
           </div>
         </div>
       )}

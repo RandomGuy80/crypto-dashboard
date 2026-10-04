@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../store/auth'
 import { api } from '../lib/api'
+import { PriceTicker } from './PriceTicker'
 
 const navLinks = [
   { to: '/', label: 'Market', icon: '◈' },
@@ -31,6 +32,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col">
       <nav className="sticky top-0 z-50 glass border-b border-white/5">
+        {accessToken && <PriceTicker />}
+
         {gm && (
           <div className="border-b border-white/5 px-6 py-1.5 overflow-hidden">
             <div className="max-w-7xl mx-auto flex items-center gap-6 text-xs text-gray-500">
@@ -70,7 +73,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg gradient-btn flex items-center justify-center text-sm font-bold pulse-glow">₿</div>
-            <span className="text-lg font-bold gradient-text">CryptoDash</span>
+            <span className="text-lg font-bold gradient-text-anim">CryptoDash</span>
           </Link>
 
           {accessToken && (

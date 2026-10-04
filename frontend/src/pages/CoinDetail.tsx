@@ -120,7 +120,7 @@ export function CoinDetail() {
             )}
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold">{coin?.name ?? id}</h1>
+                <h1 className="text-2xl font-bold gradient-text-anim">{coin?.name ?? id}</h1>
                 <span className="text-gray-500 uppercase text-sm bg-white/5 px-2 py-0.5 rounded-lg">{coin?.symbol}</span>
               </div>
               {currentPrice && (

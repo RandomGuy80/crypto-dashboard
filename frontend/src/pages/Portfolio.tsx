@@ -34,24 +34,24 @@ export function Portfolio() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Portfolio</h1>
+      <h1 className="text-2xl font-bold gradient-text-anim">Portfolio</h1>
 
       {holdings.length > 0 && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="glass rounded-2xl p-6 glow-purple">
+            <div className="glass-card-hover holo-card rounded-2xl p-6 glow-purple">
               <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Total Value</p>
               <p className="text-3xl font-bold font-mono">
                 ${totalValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}
               </p>
             </div>
-            <div className={`glass rounded-2xl p-6 ${totalPnL >= 0 ? 'glow-cyan' : ''}`}>
+            <div className={`glass-card-hover holo-card rounded-2xl p-6 ${totalPnL >= 0 ? 'glow-cyan' : ''}`}>
               <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Total P&L</p>
               <p className={`text-3xl font-bold font-mono ${totalPnL >= 0 ? 'price-up' : 'price-down'}`}>
                 {totalPnL >= 0 ? '+' : ''}${totalPnL.toLocaleString(undefined, { maximumFractionDigits: 2 })}
               </p>
             </div>
-            <div className="glass rounded-2xl p-6">
+            <div className="glass-card-hover holo-card rounded-2xl p-6">
               <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Return</p>
               <p className={`text-3xl font-bold font-mono ${pnlPct >= 0 ? 'price-up' : 'price-down'}`}>
                 {pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(2)}%
