@@ -63,6 +63,7 @@ func main() {
 	coins := api.Group("/coins")
 	coins.Get("/", coinsHandler.GetTopCoins)
 	coins.Get("/:id/history", coinsHandler.GetCoinHistory)
+	api.Get("/market/global", coinsHandler.GetGlobalMarket)
 
 	watchlist := api.Group("/watchlist", authMiddleware)
 	watchlist.Get("/", userHandler.GetWatchlist)

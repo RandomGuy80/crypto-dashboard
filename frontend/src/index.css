@@ -76,4 +76,25 @@
     50% { box-shadow: 0 0 20px rgba(168, 85, 247, 0.6); }
   }
   .pulse-glow { animation: pulse-glow 2s infinite; }
+
+  .glow-green { box-shadow: 0 0 20px rgba(74, 222, 128, 0.2); }
+  .glow-red   { box-shadow: 0 0 20px rgba(248, 113, 113, 0.2); }
+
+  @keyframes count-up {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .count-up { animation: count-up 0.4s ease forwards; }
+
+  .stat-bar {
+    height: 4px;
+    border-radius: 9999px;
+    background: rgba(255,255,255,0.06);
+    overflow: hidden;
+  }
+  .stat-bar-fill {
+    height: 100%;
+    border-radius: 9999px;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
 }

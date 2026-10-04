@@ -28,3 +28,12 @@ type PriceUpdate struct {
 	Symbol string  `json:"symbol"`
 	Price  float64 `json:"price"`
 }
+
+type GlobalMarket struct {
+	TotalMarketCap   float64 `json:"total_market_cap_usd"`
+	TotalVolume      float64 `json:"total_volume_usd"`
+	BTCDominance     float64 `json:"btc_dominance"`
+	ETHDominance     float64 `json:"eth_dominance"`
+	MarketCapChange  float64 `json:"market_cap_change_24h"`
+	ActiveCoins      int     `json:"active_cryptocurrencies"`
+}

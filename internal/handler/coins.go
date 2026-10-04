@@ -44,6 +44,14 @@ func (h *CoinsHandler) GetCoinHistory(c *fiber.Ctx) error {
 	return c.JSON(candles)
 }
 
+func (h *CoinsHandler) GetGlobalMarket(c *fiber.Ctx) error {
+	gm, err := h.coinSvc.GetGlobalMarket(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": "failed to fetch market data"})
+	}
+	return c.JSON(gm)
+}
+
 func (h *CoinsHandler) WebSocket() fiber.Handler {
 	return fws.New(func(c *fws.Conn) {
 		internalws.ServeClient(h.hub, c)
