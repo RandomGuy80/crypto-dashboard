@@ -73,7 +73,7 @@ export function Portfolio() {
                         ))}
                       </Pie>
                       <Tooltip
-                        formatter={(v: number) => [`$${v.toLocaleString(undefined, { maximumFractionDigits: 2 })}`, 'Value']}
+                        formatter={(v: unknown) => [`$${Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 })}`, 'Value']}
                         contentStyle={{ background: 'rgba(15,15,25,0.95)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12 }}
                         labelStyle={{ color: '#e2e8f0', fontWeight: 600 }}
                         itemStyle={{ color: '#94a3b8' }}

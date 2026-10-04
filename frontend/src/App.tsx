@@ -16,7 +16,7 @@ import { Alerts } from './pages/Alerts'
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30000 } } })
 
-function RootRoute({ show }: { show: (msg: string, type?: any) => void }) {
+function RootRoute() {
   const { accessToken } = useAuthStore()
   if (accessToken) return <Layout><Dashboard /></Layout>
   return <Landing />
@@ -29,7 +29,7 @@ function AppInner() {
     <>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<RootRoute show={show} />} />
+          <Route path="/" element={<RootRoute />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/coin/:id" element={<ProtectedRoute><Layout><CoinDetail /></Layout></ProtectedRoute>} />

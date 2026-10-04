@@ -31,7 +31,7 @@ export function Watchlist({ showToast }: WatchlistProps) {
 
   const remove = useMutation({
     mutationFn: (coinId: string) => api.delete(`/watchlist/${coinId}`),
-    onSuccess: (_, coinId) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['watchlist'] })
       showToast?.(`Removed from watchlist`, 'info')
     },
