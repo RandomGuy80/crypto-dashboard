@@ -14,8 +14,6 @@ type Config struct {
 	JWTSecret         string
 	JWTAccessTTL      string
 	JWTRefreshTTL     string
-	CoinGeckoURL      string
-	CoinGeckoAPIKey   string
 	BinanceWS         string
 }
 
@@ -31,9 +29,7 @@ func Load() *Config {
 		JWTSecret:     mustEnv("JWT_SECRET"),
 		JWTAccessTTL:  getEnv("JWT_ACCESS_TTL", "15m"),
 		JWTRefreshTTL: getEnv("JWT_REFRESH_TTL", "168h"),
-		CoinGeckoURL:    getEnv("COINGECKO_API_URL", "https://api.coingecko.com/api/v3"),
-		CoinGeckoAPIKey: getEnv("COINGECKO_API_KEY", ""),
-		BinanceWS:       getEnv("BINANCE_WS_URL", "wss://stream.binance.com:9443/ws"),
+		BinanceWS: getEnv("BINANCE_WS_URL", "wss://stream.binance.com:9443/ws"),
 	}
 }
 

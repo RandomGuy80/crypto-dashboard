@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -13,45 +15,53 @@ import (
 	"awesomeProject11/internal/model"
 )
 
-type CoinGeckoService struct {
-	baseURL string
-	apiKey  string
-	rdb     *redis.Client
-	http    *http.Client
+const coincapBase = "https://api.coincap.io/v2"
+
+type CoinCapService struct {
+	http *http.Client
+	rdb  *redis.Client
 }
 
-func NewCoinGeckoService(baseURL, apiKey string, rdb *redis.Client) *CoinGeckoService {
-	return &CoinGeckoService{
-		baseURL: baseURL,
-		apiKey:  apiKey,
-		rdb:     rdb,
-		http:    &http.Client{Timeout: 15 * time.Second},
+func NewCoinCapService(rdb *redis.Client) *CoinCapService {
+	return &CoinCapService{
+		http: &http.Client{Timeout: 15 * time.Second},
+		rdb:  rdb,
 	}
 }
 
-func (s *CoinGeckoService) do(url string) (*http.Response, error) {
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+func (s *CoinCapService) get(url string, out interface{}) error {
+	resp, err := s.http.Get(url)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	if s.apiKey != "" {
-		req.Header.Set("x-cg-demo-api-key", s.apiKey)
-	}
-	resp, err := s.http.Do(req)
-	if err != nil {
-		return nil, err
-	}
+	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		return nil, fmt.Errorf("coingecko %s: %s", resp.Status, string(body))
+		return fmt.Errorf("coincap %s: %s", resp.Status, string(body))
 	}
-	return resp, nil
+	return json.NewDecoder(resp.Body).Decode(out)
 }
 
-func (s *CoinGeckoService) GetTopCoins(ctx context.Context, limit int) ([]model.Coin, error) {
-	cacheKey := fmt.Sprintf("coins:top:%d", limit)
+type capAsset struct {
+	ID                string  `json:"id"`
+	Symbol            string  `json:"symbol"`
+	Name              string  `json:"name"`
+	PriceUsd          *string `json:"priceUsd"`
+	ChangePercent24Hr *string `json:"changePercent24Hr"`
+	MarketCapUsd      *string `json:"marketCapUsd"`
+	VolumeUsd24Hr     *string `json:"volumeUsd24Hr"`
+}
 
+func toFloat(s *string) float64 {
+	if s == nil {
+		return 0
+	}
+	f, _ := strconv.ParseFloat(*s, 64)
+	return f
+}
+
+func (s *CoinCapService) GetTopCoins(ctx context.Context, limit int) ([]model.Coin, error) {
+	cacheKey := fmt.Sprintf("coins:top:%d", limit)
 	if cached, err := s.rdb.Get(ctx, cacheKey).Bytes(); err == nil {
 		var coins []model.Coin
 		if json.Unmarshal(cached, &coins) == nil {
@@ -59,31 +69,36 @@ func (s *CoinGeckoService) GetTopCoins(ctx context.Context, limit int) ([]model.
 		}
 	}
 
-	url := fmt.Sprintf("%s/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=%d&page=1&sparkline=true", s.baseURL, limit)
-	resp, err := s.do(url)
-	if err != nil {
-		return nil, err
+	url := fmt.Sprintf("%s/assets?limit=%d", coincapBase, limit)
+	var raw struct {
+		Data []capAsset `json:"data"`
 	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
+	if err := s.get(url, &raw); err != nil {
 		return nil, err
 	}
 
-	var coins []model.Coin
-	if err := json.Unmarshal(body, &coins); err != nil {
-		return nil, err
+	coins := make([]model.Coin, 0, len(raw.Data))
+	for _, d := range raw.Data {
+		sym := strings.ToLower(d.Symbol)
+		coins = append(coins, model.Coin{
+			ID:            d.ID,
+			Symbol:        sym,
+			Name:          d.Name,
+			CurrentPrice:  toFloat(d.PriceUsd),
+			PriceChange24: toFloat(d.ChangePercent24Hr),
+			MarketCap:     toFloat(d.MarketCapUsd),
+			Volume24h:     toFloat(d.VolumeUsd24Hr),
+			Image:         fmt.Sprintf("https://assets.coincap.io/assets/icons/%s@2x.png", sym),
+		})
 	}
 
 	if data, err := json.Marshal(coins); err == nil {
 		s.rdb.Set(ctx, cacheKey, data, 60*time.Second)
 	}
-
 	return coins, nil
 }
 
-func (s *CoinGeckoService) GetGlobalMarket(ctx context.Context) (*model.GlobalMarket, error) {
+func (s *CoinCapService) GetGlobalMarket(ctx context.Context) (*model.GlobalMarket, error) {
 	cacheKey := "market:global"
 	if cached, err := s.rdb.Get(ctx, cacheKey).Bytes(); err == nil {
 		var gm model.GlobalMarket
@@ -92,37 +107,34 @@ func (s *CoinGeckoService) GetGlobalMarket(ctx context.Context) (*model.GlobalMa
 		}
 	}
 
-	resp, err := s.do(s.baseURL + "/global")
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
+	url := fmt.Sprintf("%s/assets?limit=100", coincapBase)
 	var raw struct {
-		Data struct {
-			ActiveCryptocurrencies  int                `json:"active_cryptocurrencies"`
-			TotalMarketCap          map[string]float64 `json:"total_market_cap"`
-			TotalVolume             map[string]float64 `json:"total_volume"`
-			MarketCapPercentage     map[string]float64 `json:"market_cap_percentage"`
-			MarketCapChangePct24h   float64            `json:"market_cap_change_percentage_24h_usd"`
-		} `json:"data"`
+		Data []capAsset `json:"data"`
 	}
-	if err := json.Unmarshal(body, &raw); err != nil {
+	if err := s.get(url, &raw); err != nil {
 		return nil, err
+	}
+
+	var totalMC, totalVol, btcMC, ethMC float64
+	for _, d := range raw.Data {
+		mc := toFloat(d.MarketCapUsd)
+		totalMC += mc
+		totalVol += toFloat(d.VolumeUsd24Hr)
+		if d.ID == "bitcoin" {
+			btcMC = mc
+		} else if d.ID == "ethereum" {
+			ethMC = mc
+		}
 	}
 
 	gm := &model.GlobalMarket{
-		TotalMarketCap:  raw.Data.TotalMarketCap["usd"],
-		TotalVolume:     raw.Data.TotalVolume["usd"],
-		BTCDominance:    raw.Data.MarketCapPercentage["btc"],
-		ETHDominance:    raw.Data.MarketCapPercentage["eth"],
-		MarketCapChange: raw.Data.MarketCapChangePct24h,
-		ActiveCoins:     raw.Data.ActiveCryptocurrencies,
+		TotalMarketCap: totalMC,
+		TotalVolume:    totalVol,
+		ActiveCoins:    len(raw.Data),
+	}
+	if totalMC > 0 {
+		gm.BTCDominance = btcMC / totalMC * 100
+		gm.ETHDominance = ethMC / totalMC * 100
 	}
 
 	if data, err := json.Marshal(gm); err == nil {
@@ -131,9 +143,8 @@ func (s *CoinGeckoService) GetGlobalMarket(ctx context.Context) (*model.GlobalMa
 	return gm, nil
 }
 
-func (s *CoinGeckoService) GetCoinHistory(ctx context.Context, coinID string, days int) ([]model.CandlePoint, error) {
+func (s *CoinCapService) GetCoinHistory(ctx context.Context, coinID string, days int) ([]model.CandlePoint, error) {
 	cacheKey := fmt.Sprintf("coins:history:%s:%d", coinID, days)
-
 	if cached, err := s.rdb.Get(ctx, cacheKey).Bytes(); err == nil {
 		var candles []model.CandlePoint
 		if json.Unmarshal(cached, &candles) == nil {
@@ -141,35 +152,42 @@ func (s *CoinGeckoService) GetCoinHistory(ctx context.Context, coinID string, da
 		}
 	}
 
-	url := fmt.Sprintf("%s/coins/%s/ohlc?vs_currency=usd&days=%d", s.baseURL, coinID, days)
-	resp, err := s.do(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	// CoinGecko returns [[timestamp, open, high, low, close], ...]
-	var raw [][]float64
-	if err := json.Unmarshal(body, &raw); err != nil {
-		return nil, err
+	interval := "h6"
+	switch {
+	case days <= 1:
+		interval = "m15"
+	case days <= 7:
+		interval = "h2"
+	case days <= 30:
+		interval = "h6"
+	default:
+		interval = "d1"
 	}
 
-	candles := make([]model.CandlePoint, 0, len(raw))
-	for _, r := range raw {
-		if len(r) < 5 {
-			continue
-		}
+	now := time.Now()
+	start := now.AddDate(0, 0, -days).UnixMilli()
+	end := now.UnixMilli()
+
+	url := fmt.Sprintf("%s/assets/%s/history?interval=%s&start=%d&end=%d", coincapBase, coinID, interval, start, end)
+	var raw struct {
+		Data []struct {
+			PriceUsd *string `json:"priceUsd"`
+			Time     int64   `json:"time"`
+		} `json:"data"`
+	}
+	if err := s.get(url, &raw); err != nil {
+		return nil, err
+	}
+
+	candles := make([]model.CandlePoint, 0, len(raw.Data))
+	for _, d := range raw.Data {
+		price := toFloat(d.PriceUsd)
 		candles = append(candles, model.CandlePoint{
-			Time:  int64(r[0]) / 1000,
-			Open:  r[1],
-			High:  r[2],
-			Low:   r[3],
-			Close: r[4],
+			Time:  d.Time / 1000,
+			Open:  price,
+			High:  price,
+			Low:   price,
+			Close: price,
 		})
 	}
 
@@ -180,6 +198,5 @@ func (s *CoinGeckoService) GetCoinHistory(ctx context.Context, coinID string, da
 	if data, err := json.Marshal(candles); err == nil {
 		s.rdb.Set(ctx, cacheKey, data, ttl)
 	}
-
 	return candles, nil
 }

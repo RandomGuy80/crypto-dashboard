@@ -13,11 +13,11 @@ import (
 
 type UserHandler struct {
 	pool      *pgxpool.Pool
-	coinSvc   *service.CoinGeckoService
+	coinSvc   *service.CoinCapService
 	alertsSvc *service.AlertsService
 }
 
-func NewUserHandler(pool *pgxpool.Pool, coinSvc *service.CoinGeckoService, alertsSvc *service.AlertsService) *UserHandler {
+func NewUserHandler(pool *pgxpool.Pool, coinSvc *service.CoinCapService, alertsSvc *service.AlertsService) *UserHandler {
 	return &UserHandler{pool: pool, coinSvc: coinSvc, alertsSvc: alertsSvc}
 }
 

@@ -11,11 +11,11 @@ import (
 )
 
 type CoinsHandler struct {
-	coinSvc *service.CoinGeckoService
+	coinSvc *service.CoinCapService
 	hub     *internalws.Hub
 }
 
-func NewCoinsHandler(coinSvc *service.CoinGeckoService, hub *internalws.Hub) *CoinsHandler {
+func NewCoinsHandler(coinSvc *service.CoinCapService, hub *internalws.Hub) *CoinsHandler {
 	return &CoinsHandler{coinSvc: coinSvc, hub: hub}
 }
 
