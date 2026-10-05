@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -15,7 +16,10 @@ import (
 	"awesomeProject11/internal/model"
 )
 
-const coincapBase = "https://api.coincap.io/v2"
+const (
+	paprikaBase = "https://api.coinpaprika.com/v1"
+	binanceBase = "https://api.binance.com/api/v3"
+)
 
 type CoinCapService struct {
 	http *http.Client
@@ -24,7 +28,7 @@ type CoinCapService struct {
 
 func NewCoinCapService(rdb *redis.Client) *CoinCapService {
 	return &CoinCapService{
-		http: &http.Client{Timeout: 15 * time.Second},
+		http: &http.Client{Timeout: 20 * time.Second},
 		rdb:  rdb,
 	}
 }
@@ -32,32 +36,47 @@ func NewCoinCapService(rdb *redis.Client) *CoinCapService {
 func (s *CoinCapService) get(url string, out interface{}) error {
 	resp, err := s.http.Get(url)
 	if err != nil {
-		return err
+		return fmt.Errorf("http get %s: %w", url, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("coincap %s: %s", resp.Status, string(body))
+		return fmt.Errorf("status %d from %s: %s", resp.StatusCode, url, string(body))
 	}
 	return json.NewDecoder(resp.Body).Decode(out)
 }
 
-type capAsset struct {
-	ID                string  `json:"id"`
-	Symbol            string  `json:"symbol"`
-	Name              string  `json:"name"`
-	PriceUsd          *string `json:"priceUsd"`
-	ChangePercent24Hr *string `json:"changePercent24Hr"`
-	MarketCapUsd      *string `json:"marketCapUsd"`
-	VolumeUsd24Hr     *string `json:"volumeUsd24Hr"`
+type paprikaUSD struct {
+	Price            float64 `json:"price"`
+	Volume24h        float64 `json:"volume_24h"`
+	MarketCap        float64 `json:"market_cap"`
+	PercentChange24h float64 `json:"percent_change_24h"`
 }
 
-func toFloat(s *string) float64 {
-	if s == nil {
-		return 0
+type paprikaTicker struct {
+	ID     string                `json:"id"`
+	Name   string                `json:"name"`
+	Symbol string                `json:"symbol"`
+	Rank   int                   `json:"rank"`
+	Quotes map[string]paprikaUSD `json:"quotes"`
+}
+
+func (s *CoinCapService) fetchTickers(ctx context.Context) ([]paprikaTicker, error) {
+	cacheKey := "paprika:tickers:raw"
+	if cached, err := s.rdb.Get(ctx, cacheKey).Bytes(); err == nil {
+		var tickers []paprikaTicker
+		if json.Unmarshal(cached, &tickers) == nil {
+			return tickers, nil
+		}
 	}
-	f, _ := strconv.ParseFloat(*s, 64)
-	return f
+	var tickers []paprikaTicker
+	if err := s.get(paprikaBase+"/tickers?quotes=USD", &tickers); err != nil {
+		return nil, err
+	}
+	if data, err := json.Marshal(tickers); err == nil {
+		s.rdb.Set(ctx, cacheKey, data, 60*time.Second)
+	}
+	return tickers, nil
 }
 
 func (s *CoinCapService) GetTopCoins(ctx context.Context, limit int) ([]model.Coin, error) {
@@ -69,26 +88,29 @@ func (s *CoinCapService) GetTopCoins(ctx context.Context, limit int) ([]model.Co
 		}
 	}
 
-	url := fmt.Sprintf("%s/assets?limit=%d", coincapBase, limit)
-	var raw struct {
-		Data []capAsset `json:"data"`
-	}
-	if err := s.get(url, &raw); err != nil {
+	tickers, err := s.fetchTickers(ctx)
+	if err != nil {
+		log.Printf("GetTopCoins error: %v", err)
 		return nil, err
 	}
 
-	coins := make([]model.Coin, 0, len(raw.Data))
-	for _, d := range raw.Data {
-		sym := strings.ToLower(d.Symbol)
+	if limit > len(tickers) {
+		limit = len(tickers)
+	}
+
+	coins := make([]model.Coin, 0, limit)
+	for _, t := range tickers[:limit] {
+		usd := t.Quotes["USD"]
+		sym := strings.ToLower(t.Symbol)
 		coins = append(coins, model.Coin{
-			ID:            d.ID,
+			ID:            t.ID,
 			Symbol:        sym,
-			Name:          d.Name,
-			CurrentPrice:  toFloat(d.PriceUsd),
-			PriceChange24: toFloat(d.ChangePercent24Hr),
-			MarketCap:     toFloat(d.MarketCapUsd),
-			Volume24h:     toFloat(d.VolumeUsd24Hr),
-			Image:         fmt.Sprintf("https://assets.coincap.io/assets/icons/%s@2x.png", sym),
+			Name:          t.Name,
+			CurrentPrice:  usd.Price,
+			PriceChange24: usd.PercentChange24h,
+			MarketCap:     usd.MarketCap,
+			Volume24h:     usd.Volume24h,
+			Image:         fmt.Sprintf("https://static.coinpaprika.com/coin/%s/logo.png", t.ID),
 		})
 	}
 
@@ -107,30 +129,32 @@ func (s *CoinCapService) GetGlobalMarket(ctx context.Context) (*model.GlobalMark
 		}
 	}
 
-	url := fmt.Sprintf("%s/assets?limit=100", coincapBase)
-	var raw struct {
-		Data []capAsset `json:"data"`
-	}
-	if err := s.get(url, &raw); err != nil {
+	tickers, err := s.fetchTickers(ctx)
+	if err != nil {
+		log.Printf("GetGlobalMarket error: %v", err)
 		return nil, err
 	}
 
 	var totalMC, totalVol, btcMC, ethMC float64
-	for _, d := range raw.Data {
-		mc := toFloat(d.MarketCapUsd)
-		totalMC += mc
-		totalVol += toFloat(d.VolumeUsd24Hr)
-		if d.ID == "bitcoin" {
-			btcMC = mc
-		} else if d.ID == "ethereum" {
-			ethMC = mc
+	count := 100
+	if count > len(tickers) {
+		count = len(tickers)
+	}
+	for _, t := range tickers[:count] {
+		usd := t.Quotes["USD"]
+		totalMC += usd.MarketCap
+		totalVol += usd.Volume24h
+		if t.ID == "btc-bitcoin" {
+			btcMC = usd.MarketCap
+		} else if t.ID == "eth-ethereum" {
+			ethMC = usd.MarketCap
 		}
 	}
 
 	gm := &model.GlobalMarket{
 		TotalMarketCap: totalMC,
 		TotalVolume:    totalVol,
-		ActiveCoins:    len(raw.Data),
+		ActiveCoins:    len(tickers),
 	}
 	if totalMC > 0 {
 		gm.BTCDominance = btcMC / totalMC * 100
@@ -143,6 +167,15 @@ func (s *CoinCapService) GetGlobalMarket(ctx context.Context) (*model.GlobalMark
 	return gm, nil
 }
 
+// symbolFromID extracts the trading symbol from a CoinPaprika ID.
+// e.g. "btc-bitcoin" → "BTC", "eth-ethereum" → "ETH"
+func symbolFromID(coinID string) string {
+	if i := strings.Index(coinID, "-"); i > 0 {
+		return strings.ToUpper(coinID[:i])
+	}
+	return strings.ToUpper(coinID)
+}
+
 func (s *CoinCapService) GetCoinHistory(ctx context.Context, coinID string, days int) ([]model.CandlePoint, error) {
 	cacheKey := fmt.Sprintf("coins:history:%s:%d", coinID, days)
 	if cached, err := s.rdb.Get(ctx, cacheKey).Bytes(); err == nil {
@@ -152,51 +185,71 @@ func (s *CoinCapService) GetCoinHistory(ctx context.Context, coinID string, days
 		}
 	}
 
-	interval := "h6"
+	symbol := symbolFromID(coinID)
+	pair := symbol + "USDT"
+
+	interval := "1d"
+	limit := days
 	switch {
 	case days <= 1:
-		interval = "m15"
+		interval = "1h"
+		limit = 24
 	case days <= 7:
-		interval = "h2"
+		interval = "4h"
+		limit = days * 6
 	case days <= 30:
-		interval = "h6"
+		interval = "1d"
+		limit = days
 	default:
-		interval = "d1"
+		interval = "1d"
+		limit = days
 	}
 
-	now := time.Now()
-	start := now.AddDate(0, 0, -days).UnixMilli()
-	end := now.UnixMilli()
+	url := fmt.Sprintf("%s/klines?symbol=%s&interval=%s&limit=%d", binanceBase, pair, interval, limit)
 
-	url := fmt.Sprintf("%s/assets/%s/history?interval=%s&start=%d&end=%d", coincapBase, coinID, interval, start, end)
-	var raw struct {
-		Data []struct {
-			PriceUsd *string `json:"priceUsd"`
-			Time     int64   `json:"time"`
-		} `json:"data"`
-	}
+	var raw [][]json.RawMessage
 	if err := s.get(url, &raw); err != nil {
+		log.Printf("GetCoinHistory error for %s (%s): %v", coinID, pair, err)
 		return nil, err
 	}
 
-	candles := make([]model.CandlePoint, 0, len(raw.Data))
-	for _, d := range raw.Data {
-		price := toFloat(d.PriceUsd)
+	candles := make([]model.CandlePoint, 0, len(raw))
+	for _, r := range raw {
+		if len(r) < 5 {
+			continue
+		}
+		var openTime int64
+		if err := json.Unmarshal(r[0], &openTime); err != nil {
+			continue
+		}
+		open := parseKlineFloat(r[1])
+		high := parseKlineFloat(r[2])
+		low := parseKlineFloat(r[3])
+		close := parseKlineFloat(r[4])
 		candles = append(candles, model.CandlePoint{
-			Time:  d.Time / 1000,
-			Open:  price,
-			High:  price,
-			Low:   price,
-			Close: price,
+			Time:  openTime / 1000,
+			Open:  open,
+			High:  high,
+			Low:   low,
+			Close: close,
 		})
 	}
 
 	ttl := 5 * time.Minute
-	if days == 1 {
+	if days <= 1 {
 		ttl = 60 * time.Second
 	}
 	if data, err := json.Marshal(candles); err == nil {
 		s.rdb.Set(ctx, cacheKey, data, ttl)
 	}
 	return candles, nil
+}
+
+func parseKlineFloat(raw json.RawMessage) float64 {
+	var s string
+	if err := json.Unmarshal(raw, &s); err != nil {
+		return 0
+	}
+	f, _ := strconv.ParseFloat(s, 64)
+	return f
 }
